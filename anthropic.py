@@ -277,27 +277,41 @@ class Pipe:
         """
         Build the payload for the API request based on the processed messages and model selection.
         """
+        # Start with common parameters
         payload = {
             "model": chosen_model,
             "messages": processed_messages,
-            "stop_sequences": body.get("stop", []),
             "stream": body.get("stream", False),
         }
+        
+        # Add stop sequences if provided
+        if "stop" in body:
+            payload["stop_sequences"] = body["stop"]
+        
+        # Handle extended thinking models
         if extended_thinking:
+            # Default max_tokens for extended thinking
             max_tokens = body.get("max_tokens", 20000)
             budget_tokens = min(16000, max_tokens - 1)
-            payload.update({
-                "max_tokens": max_tokens,
-                "thinking": {"type": "enabled", "budget_tokens": budget_tokens},
-            })
+            
+            payload["max_tokens"] = max_tokens
+            payload["thinking"] = {"type": "enabled", "budget_tokens": budget_tokens}
+            
+            # Add optional parameters if they exist in the request body
+            for param in ["temperature", "top_k", "top_p"]:
+                if param in body:
+                    payload[param] = body[param]
         else:
-            payload.update({
-                "max_tokens": body.get("max_tokens", 4096),
-                "temperature": body.get("temperature", 0.8),
-                "top_k": body.get("top_k", 40),
-                "top_p": body.get("top_p", 0.9),
-            })
+            # For standard models, add parameters only if they exist in the request body
+            for param, default in [
+                ("max_tokens", 4096),
+                ("temperature", 0.8),
+                ("top_k", 40),
+                ("top_p", 0.9)
+            ]:
+                payload[param] = body.get(param, default)
 
+        # Add system message if provided
         if system_message:
             payload["messages"].insert(0, {
                 "role": "system",
