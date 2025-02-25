@@ -10,6 +10,16 @@ This repository contains a collection of utility functions and tools that I've d
 
 - Integration with Anthropic's Claude latest 3.7 models
 
+## Installation of Functions
+
+To add these functions to your Open WebUI instance:
+
+1. Go to the Admin Panel in Open WebUI
+2. Navigate to the "Functions" section
+3. Click the "+" symbol in the top right corner
+4. Upload or paste the function code
+5. Save the function
+
 ## Usage
 
 These functions are primarily for personal use, but feel free to adapt them for your own projects. The code is provided under the MIT license.
