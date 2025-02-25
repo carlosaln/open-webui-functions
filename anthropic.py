@@ -311,12 +311,10 @@ class Pipe:
             ]:
                 payload[param] = body.get(param, default)
 
-        # Add system message if provided
+        # Add system message as a top-level parameter if provided
         if system_message:
-            payload["messages"].insert(0, {
-                "role": "system",
-                "content": [{"type": ContentType.TEXT.value, "text": str(system_message)}],
-            })
+            # Format system message according to Anthropic API requirements
+            payload["system"] = str(system_message)
 
         return payload
 
