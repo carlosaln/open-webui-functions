@@ -243,10 +243,11 @@ class Pipe:
             if isinstance(content, list):
                 for item in content:
                     if item.get("type") == ContentType.TEXT.value:
-                        processed_content.append({
-                            "type": ContentType.TEXT.value,
-                            "text": item.get("text", "")
-                        })
+                        if item.get("text", "").strip():
+                            processed_content.append({
+                                "type": ContentType.TEXT.value,
+                                "text": item.get("text", "")
+                            })
                     elif item.get("type") == "image_url":
                         processed_image = self.process_image(item)
                         processed_content.append(processed_image)
