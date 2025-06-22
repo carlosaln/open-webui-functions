@@ -146,6 +146,16 @@ class Pipe:
                 name="claude-3.7-sonnet-latest (extended thinking)",
                 api_identifier="claude-3-7-sonnet-latest"
             ),
+            ModelConfig(
+                id="claude-sonnet-4-20250514",
+                name="claude-sonnet-4-20250514",
+                api_identifier="claude-sonnet-4-20250514",
+            ),
+            ModelConfig(
+                id="claude-opus-4-20250514",
+                name="claude-opus-4-20250514",
+                api_identifier="claude-opus-4-20250514",
+            ),
         ]
 
     @lru_cache(maxsize=1)
