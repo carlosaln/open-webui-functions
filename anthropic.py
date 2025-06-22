@@ -253,10 +253,11 @@ class Pipe:
             if isinstance(content, list):
                 for item in content:
                     if item.get("type") == ContentType.TEXT.value:
-                        processed_content.append({
-                            "type": ContentType.TEXT.value,
-                            "text": item.get("text", "")
-                        })
+                        if item.get("text", "").strip():
+                            processed_content.append({
+                                "type": ContentType.TEXT.value,
+                                "text": item.get("text", "")
+                            })
                     elif item.get("type") == "image_url":
                         processed_image = self.process_image(item)
                         processed_content.append(processed_image)
@@ -362,10 +363,33 @@ class Pipe:
                 return self.non_stream_response(self.API_ENDPOINT, headers, payload)
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed: {e}")
-            raise AnthropicAPIError(500, f"Request failed: {e}")
+            error_message = f"Request failed: {e}"
+            if hasattr(e, "response") and e.response is not None:
+                try:
+                    error_data = e.response.json()
+                    if "error" in error_data:
+                        error_message = f"Anthropic API Error: {error_data['error'].get('message', str(e))}"
+                except:
+                    error_message = f"Anthropic API Error ({e.response.status_code}): {e.response.text}"
+
+            if body.get("stream", False):
+                def error_generator():
+                    yield f"Error: {error_message}"
+
+                return error_generator()
+            else:
+                return f"Error: {error_message}"
         except Exception as e:
             logger.error(f"Error in pipe method: {e}")
-            raise AnthropicAPIError(500, f"Error: {e}")
+            error_message = f"Error: {str(e)}"
+
+            if body.get("stream", False):
+                def error_generator():
+                    yield error_message
+
+                return error_generator()
+            else:
+                return error_message
 
     def stream_response(
         self, url: str, headers: Dict[str, str], payload: Dict[str, Any]
@@ -378,8 +402,17 @@ class Pipe:
         try:
             with requests.post(url, headers=headers, json=payload, stream=True, timeout=self.DEFAULT_TIMEOUT) as response:
                 if response.status_code != 200:
-                    raise AnthropicAPIError(response.status_code, response.text)
-
+                    error_message = response.text
+                    try:
+                        error_data = response.json()
+                        if "error" in error_data:
+                            error_message = error_data["error"].get(
+                                "message", response.text
+                            )
+                    except:
+                        pass
+                    yield f"Error: Anthropic API returned status code {response.status_code}: {error_message}"
+                    return
                 for line in response.iter_lines():
                     if not line:
                         continue
@@ -442,10 +475,18 @@ class Pipe:
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed: {e}")
-            raise AnthropicAPIError(500, f"Request failed: {e}")
+            error_message = f"Request failed: {e}"
+            if hasattr(e, "response") and e.response is not None:
+                try:
+                    error_data = e.response.json()
+                    if "error" in error_data:
+                        error_message = f"Anthropic API Error: {error_data['error'].get('message', str(e))}"
+                except:
+                    error_message = f"Anthropic API Error ({e.response.status_code}): {e.response.text}"
+            yield f"Error: {error_message}"
         except Exception as e:
             logger.error(f"General error in stream_response method: {e}")
-            raise AnthropicAPIError(500, f"Error: {e}")
+            yield f"Error: {str(e)}"
 
     def _has_thinking_content(self, data: Dict[str, Any]) -> bool:
         """
@@ -474,7 +515,16 @@ class Pipe:
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=self.DEFAULT_TIMEOUT)
             if response.status_code != 200:
-                raise AnthropicAPIError(response.status_code, response.text)
+                error_message = response.text
+                try:
+                    error_data = response.json()
+                    if "error" in error_data:
+                        error_message = error_data["error"].get(
+                            "message", response.text
+                        )
+                except:
+                    pass
+                return f"Error: Anthropic API returned status code {response.status_code}: {error_message}"
 
             res = response.json()
 
@@ -483,7 +533,8 @@ class Pipe:
                 text_parts, thinking_parts = [], []
                 for item in res["content"]:
                     if item.get("type") == ContentType.TEXT.value:
-                        text_parts.append(item.get("text", ""))
+                        if item.get("text").strip():
+                            text_parts.append(item.get("text", ""))
                     elif item.get("type") == ContentType.THINKING.value:
                         thinking_parts.append(item.get("text", ""))
                 if thinking_parts:
@@ -514,7 +565,15 @@ class Pipe:
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed non-stream request: {e}")
-            raise AnthropicAPIError(500, f"Request failed: {e}")
+            error_message = f"Request failed: {e}"
+            if hasattr(e, "response") and e.response is not None:
+                try:
+                    error_data = e.response.json()
+                    if "error" in error_data:
+                        error_message = f"Anthropic API Error: {error_data['error'].get('message', str(e))}"
+                except:
+                    error_message = f"Anthropic API Error ({e.response.status_code}): {e.response.text}"
+            return f"Error: {error_message}"
         except Exception as e:
             logger.error(f"General error in non_stream_response method: {e}")
-            raise AnthropicAPIError(500, f"Error: {e}")
+            return f"Error: {str(e)}"
